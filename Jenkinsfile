@@ -1,4 +1,4 @@
-@Library('ott-lib-jenkins')_
+@Library('ott-lib-jenkins@nuget-small-fix')_
 node('Linux') {
     OUTPUT=""
     PROJECT_NAME = "Couchbase"
@@ -28,10 +28,10 @@ node('Linux') {
 
         OUTPUT = ""
         stage('Build And Publish Nuget') {
+            specificVersion = sh(returnStdout: true, script: "git tag --sort version:refname | grep ^2 | tail -1").trim()
             dir ("Src") {
-                OUTPUT = dotnetBuildAndPublishNuget(PROJECT_NAME,params.mark_alpha,params.nuget_server)
+                OUTPUT = dotnetBuildAndPublishNuget(PROJECT_NAME,params.mark_alpha,params.nuget_server,specificVersion)
             }
-
         }
     } catch (err) {
             echo err.getMessage()
