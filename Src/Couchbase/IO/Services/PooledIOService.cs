@@ -67,6 +67,8 @@ namespace Couchbase.IO.Services
                 OperationHeader header;
                 ErrorCode errorCode;
 
+                SizeHelper.Check(request, operation.Key);
+
                 using (var scope = Tracer.BuildSpan(operation, connection, ConnectionPool.Configuration.BucketName).StartActive())
                 {
                     response = connection.Send(request);
@@ -140,6 +142,8 @@ namespace Couchbase.IO.Services
                 byte[] response;
                 OperationHeader header;
                 ErrorCode errorCode;
+
+                SizeHelper.Check(request, operation.Key);
 
                 using (var scope = Tracer.BuildSpan(operation, connection, ConnectionPool.Configuration.BucketName).StartActive())
                 {

@@ -175,42 +175,53 @@ namespace Couchbase.IO
         {
             try
             {
-                while (Socket.Connected)
+                try
                 {
-                    if (_receiveBuffer.Length < _receiveBufferLength*2)
+                    while (Socket.Connected)
                     {
-                        var buffer = new byte[_receiveBuffer.Length*2];
-                        Buffer.BlockCopy(_receiveBuffer, 0, buffer, 0, _receiveBufferLength);
-                        _receiveBuffer = buffer;
+                        if (_receiveBuffer.Length < _receiveBufferLength * 2)
+                        {
+                            var buffer = new byte[_receiveBuffer.Length * 2];
+                            Buffer.BlockCopy(_receiveBuffer, 0, buffer, 0, _receiveBufferLength);
+                            _receiveBuffer = buffer;
+                        }
+
+                        var receivedByteCount = Socket.Receive(_receiveBuffer, _receiveBufferLength,
+                            _receiveBuffer.Length - _receiveBufferLength, SocketFlags.None);
+
+                        if (receivedByteCount == 0) break;
+
+                        _receiveBufferLength += receivedByteCount;
+
+                        ParseReceivedData();
                     }
 
-                    var receivedByteCount = Socket.Receive(_receiveBuffer, _receiveBufferLength,
-                        _receiveBuffer.Length - _receiveBufferLength, SocketFlags.None);
-
-                    if (receivedByteCount == 0) break;
-
-                    _receiveBufferLength += receivedByteCount;
-
-                    ParseReceivedData();
+                    HandleDisconnect(new RemoteHostClosedException(
+                        ExceptionUtil.GetMessage(ExceptionUtil.RemoteHostClosedMsg, EndPoint)));
                 }
-                HandleDisconnect(new RemoteHostClosedException(
-                    ExceptionUtil.GetMessage(ExceptionUtil.RemoteHostClosedMsg, EndPoint)));
-            }
 #if NET452
-            catch (ThreadAbortException) {}
+                catch (ThreadAbortException) {}
 #endif
-            catch (ObjectDisposedException) {}
-            catch (SocketException e)
-            {
-                //Dispose has already been thrown by another thread
-                if ((int) e.SocketErrorCode != 10004)
+                catch (ObjectDisposedException)
+                {
+                }
+                catch (SocketException e)
+                {
+                    //Dispose has already been thrown by another thread
+                    if ((int)e.SocketErrorCode != 10004)
+                    {
+                        HandleDisconnect(e);
+                    }
+                }
+                catch (Exception e)
                 {
                     HandleDisconnect(e);
                 }
             }
-            catch (Exception e)
+            // Global catch to avoid unhandled exceptions to be thrown in .NET 8.
+            // In case of unhandled exceptions - main process will be crashed.
+            catch
             {
-                HandleDisconnect(e);
             }
         }
 
